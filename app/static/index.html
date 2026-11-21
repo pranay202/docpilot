@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DocPilot</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --text:#e6e8ec; --muted:#8b93a1; --accent:#5b9cff; --border:#262b35; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f6f7f9; --panel:#fff; --text:#16181d; --muted:#5f6775; --accent:#1f6feb; --border:#dde1e7; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.55 system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 120px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: 13px; }
+  .msg { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin: 12px 0; }
+  .q { border-color: transparent; background: transparent; padding: 0 2px; font-weight: 600; }
+  .steps { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .cites { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .cites li { margin: 2px 0; }
+  form { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg); border-top: 1px solid var(--border); padding: 12px 16px; }
+  .row { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; }
+  input, select, button { font: inherit; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text); padding: 10px 12px; }
+  input { flex: 1; min-width: 0; }
+  button { background: var(--accent); color: #fff; border: none; cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <h1>DocPilot</h1>
+  <p class="sub" id="stats">Ask anything about the indexed documentation.</p>
+  <div id="log"></div>
+</main>
+<form id="f">
+  <div class="row">
+    <select id="product" aria-label="Product"><option value="">All products</option></select>
+    <input id="q" placeholder="How do I verify webhook signatures?" autocomplete="off" aria-label="Question">
+    <button>Ask</button>
+  </div>
+</form>
+<script>
+const log = document.getElementById('log');
+fetch('/stats').then(r => r.json()).then(s => {
+  document.getElementById('stats').textContent = `${s.chunks} chunks indexed · ${s.llm ? 'LLM answers' : 'extractive answers (no API key)'}`;
+  for (const p of s.products) document.getElementById('product').add(new Option(p, p));
+});
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+document.getElementById('f').addEventListener('submit', e => {
+  e.preventDefault();
+  const q = document.getElementById('q').value.trim(); if (q.length < 3) return;
+  const product = document.getElementById('product').value;
+  log.append(el('div', 'msg q', q));
+  const box = el('div', 'msg'); const steps = el('div', 'steps', 'thinking…'); box.append(steps); log.append(box);
+  const params = new URLSearchParams({ question: q }); if (product) params.set('product', product);
+  const es = new EventSource('/ask/stream?' + params);
+  const seen = [];
+  es.addEventListener('step', ev => { seen.push(JSON.parse(ev.data).node); steps.textContent = seen.join(' → '); });
+  es.addEventListener('answer', ev => {
+    const a = JSON.parse(ev.data);
+    box.append(el('div', '', a.answer));
+    if (a.citations.length) {
+      const ul = el('ul', 'cites');
+      for (const c of a.citations) ul.append(el('li', '', `${c.title} › ${c.section} — ${c.source}`));
+      box.append(ul);
+    }
+    es.close();
+  });
+  es.onerror = () => { steps.textContent += ' (stream closed)'; es.close(); };
+  document.getElementById('q').value = '';
+});
+</script>
+</body>
+</html>
