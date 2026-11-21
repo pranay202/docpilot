@@ -1,17 +1,20 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 
 class IngestRequest(BaseModel):
-    product: str = Field(min_length=1, max_length=100)
+    product: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_.-]+$")
     source: str = Field(min_length=1, description="Markdown folder path or sitemap URL")
 
 
 class IngestResponse(BaseModel):
     product: str
     source: str
-    status: Literal["queued", "done", "failed"]
+    status: Literal["done", "failed"]
+    documents: int = 0
+    chunks: int = 0
+    detail: str | None = None
 
 
 class AskRequest(BaseModel):
@@ -22,11 +25,22 @@ class AskRequest(BaseModel):
 
 class Citation(BaseModel):
     title: str
-    url: HttpUrl | None = None
+    section: str
+    source: str
     snippet: str
 
 
 class AskResponse(BaseModel):
     answer: str
     citations: list[Citation]
+    confidence: float = Field(ge=0.0, le=1.0)
+    mode: Literal["llm", "extractive"] = "extractive"
+    grounded: bool = True
+
+
+class LLMDraft(BaseModel):
+    """The JSON shape the model must return. Citations are context block numbers."""
+
+    answer: str = Field(min_length=1)
+    citations: list[int] = Field(min_length=1)
     confidence: float = Field(ge=0.0, le=1.0)
