@@ -30,11 +30,22 @@ jobs:
           python-version: "3.14"
           cache: pip
       - run: pip install -r requirements-dev.txt
+      - name: Cache LibreOffice help docs
+        uses: actions/cache@v4
+        with:
+          path: brand_docs/libreoffice
+          key: libreoffice-help-${{ hashFiles('scripts/fetch_libreoffice_help.sh') }}
+      - name: Fetch LibreOffice help (pinned)
+        run: ./scripts/fetch_libreoffice_help.sh
       - name: Lint
         run: ruff check .
       - name: Tests (including pgvector)
         run: pytest -q
-      - name: Retrieval and answer eval
+      - name: Eval on LibreOffice help (Writer, Calc, Impress, Draw)
+        env:
+          DATABASE_URL: ""
+        run: python -m evals.run_eval --dataset evals/libreoffice.jsonl --docs brand_docs/libreoffice --min-hit 0.85 --min-accuracy 0.7
+      - name: Eval on bundled sample docs
         env:
           DATABASE_URL: ""
         run: python -m evals.run_eval --min-hit 0.9 --min-accuracy 0.75

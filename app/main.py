@@ -1,4 +1,7 @@
 import json
+import logging
+import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Query
@@ -9,8 +12,21 @@ from app.schemas import AskRequest, AskResponse, IngestRequest, IngestResponse
 from app.service import DocService, get_service
 
 STATIC = Path(__file__).parent / "static"
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(levelname)s %(name)s: %(message)s")
 
-app = FastAPI(title="DocPilot", version="0.2.0")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """PRELOAD_DOCS=brand_docs/libreoffice indexes each subfolder as a product at startup."""
+    root = os.getenv("PRELOAD_DOCS")
+    if root:
+        svc = get_service()
+        for folder in sorted(p for p in Path(root).iterdir() if p.is_dir()):
+            svc.ingest(IngestRequest(product=folder.name, source=str(folder)))
+    yield
+
+
+app = FastAPI(title="DocPilot", version="0.3.0", lifespan=lifespan)
 
 
 @app.get("/", include_in_schema=False)
@@ -25,7 +41,14 @@ def health() -> dict[str, str]:
 
 @app.get("/stats")
 def stats(svc: DocService = Depends(get_service)) -> dict:
-    return {"chunks": svc.store.count(), "products": svc.store.products(), "llm": svc.llm is not None}
+    return {
+        "chunks": svc.store.count(),
+        "products": svc.store.products(),
+        "llm": svc.llm is not None,
+        "llm_provider": (svc.llm_info or {}).get("provider"),
+        "llm_model": (svc.llm_info or {}).get("model"),
+        "embedder": type(svc.embedder).__name__,
+    }
 
 
 @app.post("/ingest", response_model=IngestResponse)

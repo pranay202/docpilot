@@ -63,11 +63,29 @@ class HashingEmbedder:
 
 
 class OpenAIEmbedder:
-    def __init__(self, model: str, dim: int) -> None:
+    """Embeddings from any OpenAI-compatible endpoint (OpenAI, Gemini, Mistral, Ollama, ...)."""
+
+    def __init__(
+        self,
+        model: str,
+        dim: int,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        send_dimensions: bool = True,
+    ) -> None:
         from langchain_openai import OpenAIEmbeddings
 
         self.dim = dim
-        self._client = OpenAIEmbeddings(model=model, dimensions=dim)
+        kwargs: dict = {"model": model}
+        if send_dimensions:  # otherwise EMBEDDING_DIM must equal the model's native size
+            kwargs["dimensions"] = dim
+        if api_key:
+            kwargs["api_key"] = api_key
+        if base_url:
+            kwargs["base_url"] = base_url
+            # Non-OpenAI servers expect strings, not the tiktoken token arrays langchain sends by default.
+            kwargs["check_embedding_ctx_length"] = False
+        self._client = OpenAIEmbeddings(**kwargs)
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         return self._client.embed_documents(texts)

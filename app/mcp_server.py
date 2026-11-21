@@ -1,6 +1,6 @@
-"""MCP server exposing the documentation to AI coding agents.
+"""MCP server exposing the documentation to AI assistants and agents.
 
-Run over stdio (Claude Code, Cursor, etc.):
+Run over stdio (any MCP client):
     python -m app.mcp_server
 Or over HTTP:
     python -m app.mcp_server --http --port 8001
@@ -13,17 +13,17 @@ import re
 
 from fastmcp import FastMCP
 
+from app.agent import _steps_answer
 from app.schemas import AskRequest
 from app.service import DocService, get_service
 
-STEP_LINE = re.compile(r"^\s*(?:\d+[.)]|[-*])\s+(.+)")
-SETUP_WORDS = "integrate integration set up setup install configure quickstart getting started steps"
+STEP_PREFIX = re.compile(r"^\s*(?:\d+[.)]|[-*])\s+")
 
 
 def build_mcp(service: DocService | None = None) -> FastMCP:
     mcp = FastMCP(
         "docpilot",
-        instructions="Search product documentation and get integration steps before writing integration code.",
+        instructions="Search the product documentation and fetch exact how-to steps before answering users.",
     )
 
     def svc() -> DocService:
@@ -55,22 +55,16 @@ def build_mcp(service: DocService | None = None) -> FastMCP:
         return svc().ask(AskRequest(question=question, product=product)).model_dump()
 
     @mcp.tool
-    def get_integration_steps(service_name: str, product: str | None = None) -> dict:
-        """Return ordered setup/integration steps for a service, taken verbatim from the docs."""
+    def get_steps(task: str, product: str | None = None) -> dict:
+        """Return the ordered steps for a task (e.g. "insert a table of contents"), verbatim from the docs."""
         s = svc()
-        if product is None and service_name in s.store.products():
-            product = service_name
-        hits = s.search(f"{service_name} {SETUP_WORDS}", k=8, product=product)
-        steps: list[str] = []
-        sources: list[str] = []
-        for h in hits:
-            lines = [m.group(1).strip() for line in h.chunk.text.splitlines() if (m := STEP_LINE.match(line))]
-            if lines:
-                steps.extend(lines)
-                sources.append(f"{h.chunk.title} > {h.chunk.section} ({h.chunk.source})")
-            if len(steps) >= 12:
-                break
-        return {"service": service_name, "steps": steps[:12], "sources": sources}
+        hits = s.search(f"how to {task}", k=8, product=product)
+        answer = _steps_answer(hits)
+        if answer is None:
+            return {"task": task, "steps": [], "sources": []}
+        steps = [STEP_PREFIX.sub("", line).strip() for line in answer.answer.splitlines() if STEP_PREFIX.match(line)]
+        sources = [f"{c.title} > {c.section} ({c.source})" for c in answer.citations]
+        return {"task": task, "steps": steps, "sources": sources}
 
     return mcp
 

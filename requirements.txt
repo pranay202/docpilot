@@ -9,3 +9,4 @@ langchain-openai==1.8.5
 fastmcp==4.2.4
 psycopg[binary]==3.3.9
 pgvector==0.5.1
+python-dotenv==1.2.4

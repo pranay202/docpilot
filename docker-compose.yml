@@ -16,13 +16,17 @@ services:
 
   api:
     build: .
+    env_file:
+      - path: .env  # LLM_PROVIDER / API keys; see .env.example
+        required: false
     environment:
       DATABASE_URL: postgresql://docpilot:docpilot@db:5432/docpilot
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      PRELOAD_DOCS: brand_docs/libreoffice
     ports:
       - "8000:8000"
     volumes:
       - ./sample_docs:/app/sample_docs:ro
+      - ./brand_docs:/app/brand_docs:ro
     depends_on:
       db:
         condition: service_healthy
@@ -30,9 +34,11 @@ services:
   mcp:
     build: .
     command: ["python", "-m", "app.mcp_server", "--http", "--port", "8001"]
+    env_file:
+      - path: .env  # LLM_PROVIDER / API keys; see .env.example
+        required: false
     environment:
       DATABASE_URL: postgresql://docpilot:docpilot@db:5432/docpilot
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
       - "8001:8001"
     depends_on:

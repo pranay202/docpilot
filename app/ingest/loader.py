@@ -10,7 +10,9 @@ from pathlib import Path
 
 import httpx
 
-MARKDOWN_SUFFIXES = {".md", ".mdx", ".markdown"}
+from app.ingest.xhp import xhp_to_markdown
+
+MARKDOWN_SUFFIXES = {".md", ".mdx", ".markdown", ".xhp"}
 
 
 @dataclass
@@ -29,6 +31,52 @@ def _title_from_markdown(text: str, fallback: str) -> str:
     return fallback
 
 
+FRONTMATTER = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.S)
+JSX_LINE = re.compile(r"^\s*</?\$?[A-Z][\w.$]*(\s[^>]*)?/?>\s*$")
+JSX_TAG = re.compile(r"</?\$?[A-Z][\w.$]*(\s[^<>]*)?/?>")
+MD_LINK = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
+
+
+def clean_mdx(text: str) -> tuple[str | None, str]:
+    """Strip MDX-only syntax (frontmatter, imports, JSX components, link targets), keep prose and code.
+
+    Returns (frontmatter title or None, cleaned Markdown). Code fences are left untouched.
+    """
+    title = None
+    fm = FRONTMATTER.match(text)
+    if fm:
+        m = re.search(r"^title:\s*['\"]?(.+?)['\"]?\s*$", fm.group(1), re.M)
+        title = m.group(1).strip() if m else None
+        text = text[fm.end():]
+    out, in_fence, in_jsx_block = [], False, 0
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            out.append(line)
+            continue
+        if in_fence:
+            out.append(line)
+            continue
+        if re.match(r"^(import|export)\s", stripped):
+            continue
+        # multi-line JSX opening tag: <Component\n  prop="x"\n>
+        if in_jsx_block:
+            if stripped.endswith(">"):
+                in_jsx_block = 0
+            continue
+        if re.match(r"^<\$?[A-Z][\w.$]*\s*$", stripped) or (re.match(r"^<\$?[A-Z]", stripped) and ">" not in stripped):
+            in_jsx_block = 1
+            continue
+        if JSX_LINE.match(line):
+            continue
+        line = JSX_TAG.sub("", line)
+        line = MD_LINK.sub(r"\1", line)
+        out.append(line)
+    body = re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
+    return title, body
+
+
 def load_markdown_folder(path: str | Path, product: str) -> list[Document]:
     root = Path(path)
     if not root.is_dir():
@@ -36,9 +84,20 @@ def load_markdown_folder(path: str | Path, product: str) -> list[Document]:
     docs = []
     for file in sorted(root.rglob("*")):
         if file.suffix.lower() in MARKDOWN_SUFFIXES and file.is_file():
-            text = file.read_text(encoding="utf-8")
-            if text.strip():
-                docs.append(Document(product, _title_from_markdown(text, file.stem), str(file), text))
+            raw = file.read_text(encoding="utf-8")
+            if file.suffix.lower() == ".xhp":
+                try:
+                    fm_title, text = xhp_to_markdown(raw)
+                except ET.ParseError:
+                    continue
+            else:
+                fm_title, text = clean_mdx(raw)
+            if not text.strip():
+                continue
+            title = fm_title or _title_from_markdown(text, file.stem)
+            if not re.search(r"^#\s", text, re.M):
+                text = f"# {title}\n\n{text}"
+            docs.append(Document(product, title, str(file), text))
     return docs
 
 

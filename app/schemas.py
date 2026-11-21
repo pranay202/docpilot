@@ -36,6 +36,7 @@ class AskResponse(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     mode: Literal["llm", "extractive"] = "extractive"
     grounded: bool = True
+    llm_error: str | None = None  # why an LLM was configured but not used for this answer
 
 
 class LLMDraft(BaseModel):

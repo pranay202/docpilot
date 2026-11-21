@@ -19,7 +19,7 @@ def test_tools_are_listed():
         async with Client(build_mcp(make_service())) as c:
             return {t.name for t in await c.list_tools()}
 
-    assert asyncio.run(go()) == {"list_products", "search_docs", "ask_docs", "get_integration_steps"}
+    assert asyncio.run(go()) == {"list_products", "search_docs", "ask_docs", "get_steps"}
 
 
 def test_search_docs():
@@ -32,7 +32,7 @@ def test_ask_docs_returns_citations():
     assert "429" in data["answer"] and data["citations"]
 
 
-def test_integration_steps_for_service():
-    data = call("get_integration_steps", {"service_name": "notifications"}).structured_content
+def test_steps_for_task():
+    data = call("get_steps", {"task": "set up the notifications service", "product": "notifications"}).structured_content
     assert data["steps"][0].startswith("Enable the Notifications product")
     assert data["sources"]
