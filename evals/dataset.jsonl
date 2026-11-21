@@ -1,0 +1,30 @@
+{"question": "How do I install the payments SDK?", "product": "payments", "expected_section": "Install the SDK", "expected_terms": ["pip install acmepay"]}
+{"question": "Which environment variable holds the API key?", "product": "payments", "expected_section": "Install the SDK", "expected_terms": ["ACMEPAY_API_KEY"]}
+{"question": "How do I create a payment intent?", "product": "payments", "expected_section": "Create a payment intent", "expected_terms": ["payment_intents.create"]}
+{"question": "What unit are payment amounts in?", "product": "payments", "expected_section": "Create a payment intent", "expected_terms": ["smallest currency unit"]}
+{"question": "Which card number simulates a successful test payment?", "product": "payments", "expected_section": "Test mode", "expected_terms": ["4242"]}
+{"question": "How can I tell if a key is in test mode?", "product": "payments", "expected_section": "Test mode", "expected_terms": ["sk_test_"]}
+{"question": "How do I register a webhook endpoint?", "product": "payments", "expected_section": "Register an endpoint", "expected_terms": ["Settings > Webhooks"]}
+{"question": "How do I verify webhook signatures?", "product": "payments", "expected_section": "Verify signatures", "expected_terms": ["HMAC-SHA256"]}
+{"question": "Which header carries the webhook signature?", "product": "payments", "expected_section": "Verify signatures", "expected_terms": ["X-AcmePay-Signature"]}
+{"question": "How long are failed webhooks retried?", "product": "payments", "expected_section": "Retries", "expected_terms": ["3 days"]}
+{"question": "How do I make my webhook handler idempotent?", "product": "payments", "expected_section": "Retries", "expected_terms": ["event `id`"]}
+{"question": "How do I refund part of a payment?", "product": "payments", "expected_section": "Create a refund", "expected_terms": ["refunds.create"]}
+{"question": "How long do card refunds take?", "product": "payments", "expected_section": "Refund timelines", "expected_terms": ["5 to 7 business days"]}
+{"question": "Can a refund be cancelled?", "product": "payments", "expected_section": "Refund timelines", "expected_terms": ["cannot be cancelled"]}
+{"question": "What is the rate limit in live mode?", "product": "payments", "expected_section": "Rate limits", "expected_terms": ["100 requests per second"]}
+{"question": "What status code means I hit the rate limit?", "product": "payments", "expected_section": "Rate limits", "expected_terms": ["429"]}
+{"question": "How do I avoid duplicate payments when retrying?", "product": "payments", "expected_section": "Idempotency", "expected_terms": ["Idempotency-Key"]}
+{"question": "What fields are in an error response?", "product": "payments", "expected_section": "Error format", "expected_terms": ["request_id"]}
+{"question": "How do I set up the notifications service?", "product": "notifications", "expected_section": "Set up the notifications service", "expected_terms": ["sender domain"]}
+{"question": "How long does SMS sender ID approval take?", "product": "notifications", "expected_section": "Set up the notifications service", "expected_terms": ["2 business days"]}
+{"question": "Which API key scope is needed to send notifications?", "product": "notifications", "expected_section": "Set up the notifications service", "expected_terms": ["notifications:send"]}
+{"question": "How do I send an SMS message?", "product": "notifications", "expected_section": "Send a message", "expected_terms": ["POST /v1/messages"]}
+{"question": "How are template variables written?", "product": "notifications", "expected_section": "Create a template", "expected_terms": ["{{first_name}}"]}
+{"question": "What is the character limit for SMS templates?", "product": "notifications", "expected_section": "Create a template", "expected_terms": ["640 characters"]}
+{"question": "How does template localization pick a language?", "product": "notifications", "expected_section": "Localization", "expected_terms": ["locale"]}
+{"question": "What delivery statuses can a message have?", "product": "notifications", "expected_section": "Delivery statuses", "expected_terms": ["delivered"]}
+{"question": "How do I check a message's delivery status?", "product": "notifications", "expected_section": "Delivery statuses", "expected_terms": ["GET /v1/messages/{id}"]}
+{"question": "What are quiet hours?", "product": "notifications", "expected_section": "Quiet hours", "expected_terms": ["22:00"]}
+{"question": "Do one-time passwords respect quiet hours?", "product": "notifications", "expected_section": "Quiet hours", "expected_terms": ["priority: high"]}
+{"question": "What happens when a recipient replies STOP?", "product": "notifications", "expected_section": "Opt-outs", "expected_terms": ["opted out"]}

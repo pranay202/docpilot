@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: docpilot
+          POSTGRES_PASSWORD: docpilot
+          POSTGRES_DB: docpilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U docpilot"
+          --health-interval 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://docpilot:docpilot@localhost:5432/docpilot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Lint
+        run: ruff check .
+      - name: Tests (including pgvector)
+        run: pytest -q
+      - name: Retrieval and answer eval
+        env:
+          DATABASE_URL: ""
+        run: python -m evals.run_eval --min-hit 0.9 --min-accuracy 0.75
